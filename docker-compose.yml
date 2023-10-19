@@ -1,0 +1,46 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:14.7-alpine
+    environment:
+      POSTGRES_DB: pokemon
+      POSTGRES_USER: ash
+      POSTGRES_PASSWORD: gottachatemall
+      POSTGRES_HOST: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ash"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7.0.10-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ash
+      POSTGRES_PASSWORD: gottachatemall
+      POSTGRES_DB: pokemon
+      REDIS_HOST: redis
+    volumes:
+      - ./:/opt/app:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "5500:8000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8000/health/"]
+      interval: 30s
+      timeout: 5s
+    command: python manage.py  runserver 0.0.0.0:8000
