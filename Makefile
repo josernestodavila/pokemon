@@ -1,4 +1,6 @@
-.DEFAULT_GOAL: help
+.DEFAULT_GOAL := help
+
+PYTHON_VERSION = 3.11.6
 
 .PHONY: run ## Run app docker containers
 run:
@@ -6,7 +8,7 @@ run:
 	docker compose -f docker-compose.yml down
 	
 	echo "🚀 Launching containers..."
-	docker compose -f docker-compose.yml up
+	docker compose -f docker-compose.yml up -d
 
 .PHONY: build ## Build the app docker containers
 build:
@@ -18,7 +20,16 @@ healthcheck:
 	echo "🩺 Running healthcheck..."
 	curl --silent --fail http://127.0.0.0:8000/health || exit 1
 
-.PHONY: help
+.PHONY: venv ## Create a Python virtualenv and install dependencies
+venv:
+	echo "🐍 Creating Python virtualenv..."
+	PYTHON_VERSION=$$PYTHON_VERSION python3 -m venv venv
+	. ./venv/bin/activate
+	pip3 install --upgrade pip
+	pip3 install -r requirements.txt
+	pre-commit install --install-hooks
+
+.PHONY: help ## Display this message
 help:
 	@grep -E \
 		'^.PHONY: .*?## .*$$' $(MAKEFILE_LIST) | \
