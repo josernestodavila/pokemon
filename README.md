@@ -1,3 +1,5 @@
+<img width="1680" alt="Screenshot 2023-10-31 at 12 42 40 PM" src="https://github.com/josernestodavila/pokemon/assets/39853/cbbe90a4-3f3c-46f4-a2bd-592ff5ea4a76">
+
 # Django and GraphQL API for Pokemons
 
 This is a small project to explore the async capabilities of Django ORM and how to integrate Strawberry GraphQL inside Django.
