@@ -14,7 +14,7 @@ CACHE_TTL = getattr(settings, "CACHE_TTL", DEFAULT_TIMEOUT)
 
 
 class Command(BaseCommand):
-    help = "Retrieves Pokemon information by type"
+    help = "Retrieves Pokemon information by Pokemon type"
 
     def add_arguments(self, parser):
         parser.add_argument("type_name", type=str, help="The name of the Pokemon type to search for")
@@ -30,33 +30,27 @@ class Command(BaseCommand):
 
                 for pokemon_url in pokemon_urls:
                     pokemon = await get_or_create_pokemon(session, pokemon_url)
-
                     move_ids = []
 
                     moves_bar = Bar(f"Downloading Moves for {pokemon.name}", max=len(response["moves"]))
-
+                    moves_download_coroutines = []
                     for move in response["moves"]:
                         move_url = move.get("url")
-
-                        self.stdout.write(f"URL {move['url']}")
                         if not move_url:
                             continue
 
-                        move = await get_or_create_move(session, move_url)
-                        move_ids.append(move.id)
-
+                        moves_download_coroutines.append(get_or_create_move(session, move_url))
                         moves_bar.next()
                     moves_bar.finish()
 
+                    moves = await asyncio.gather(*moves_download_coroutines)
+                    move_ids.extend([move.id for move in moves])
                     pokemon_moves_objects = [
                         Pokemon.moves.through(pokemon_id=pokemon.id, move_id=move_id) for move_id in move_ids
                     ]
 
                     if pokemon_moves_objects:
-                        created_pokemon_moves = await Pokemon.moves.through.objects.abulk_create(
-                            pokemon_moves_objects, ignore_conflicts=True
-                        )
-                        self.stdout.write(f"Created {len(created_pokemon_moves)} Pokemon moves")
+                        await Pokemon.moves.through.objects.abulk_create(pokemon_moves_objects, ignore_conflicts=True)
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(get_pokemon())

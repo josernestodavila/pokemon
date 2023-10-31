@@ -31,19 +31,23 @@ class Command(BaseCommand):
                 pokemon_urls = [pokemon["url"] for pokemon in move_json["learned_by_pokemon"]]
 
                 bar = Bar(f"Downloading Pokemons for move: {move_name}", max=len(pokemon_urls))
+                pokemon_download_coroutines = []
                 for pokemon_url in pokemon_urls:
-                    pokemon = await get_or_create_pokemon(session, pokemon_url)
-
-                    await Pokemon.moves.through.objects.abulk_create(
-                        [
-                            Pokemon.moves.through(
-                                pokemon_id=pokemon.id,
-                                move_id=move.id,
-                            )
-                        ],
-                        ignore_conflicts=True,
-                    )
+                    pokemon_download_coroutines.append(get_or_create_pokemon(session, pokemon_url))
                     bar.next()
+
+                pokemons = await asyncio.gather(*pokemon_download_coroutines)
+
+                await Pokemon.moves.through.objects.abulk_create(
+                    [
+                        Pokemon.moves.through(
+                            pokemon_id=pokemon.id,
+                            move_id=move.id,
+                        )
+                        for pokemon in pokemons
+                    ],
+                    ignore_conflicts=True,
+                )
                 bar.finish()
 
         loop = asyncio.get_event_loop()
